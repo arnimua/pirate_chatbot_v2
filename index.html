@@ -194,11 +194,7 @@
                 <p>Tab "Raw Data" adalah tempat rahasia di mana Anda bisa melihat "jeroan" setiap percakapan. Di sini, setiap respons dari bot dilengkapi dengan data JSON mentah yang dikirim sebagai <strong>Payload (permintaan)</strong> dan <strong>Respons (jawaban)</strong> dari API. Ini sangat berguna jika Anda ingin memahami bagaimana data dikirim dan diterima oleh API, serta untuk tujuan debugging jika ada masalah di tengah lautan.</p>
 
                 <p><strong>Kunci API: Pilihanmu, Nak!</strong></p>
-                <p>Anda bisa memilih dua cara untuk memulai petualangan ini:</p>
-                <ul>
-                    <li><strong>Gunakan Kunci Internal:</strong> Ini adalah kunci API milik Anda sendiri yang disediakan oleh lingkungan canvas. Anda tidak perlu memasukkannya secara manual.</li>
-                    <li><strong>Masukkan Kunci Manual:</strong> Anda bisa mendapatkan kunci API dari <a href="https://aistudio.google.com/apikey" target="_blank" class="text-blue-400 hover:text-blue-300 underline">Google AI Studio</a>. Pilihan ini memberi Anda kontrol penuh.</li>
-                </ul>
+                <p>Anda bisa mendapatkan kunci API dari <a href="https://aistudio.google.com/apikey" target="_blank" class="text-blue-400 hover:text-blue-300 underline">Google AI Studio</a>. Masukkan kunci Anda saat aplikasi dimuat untuk memulai.</p>
 
                 <p><strong>Peringatan dari Kapten:</strong></p>
                 <p>Harap diingat bahwa bot ini adalah karakter yang kasar dan mungkin menggunakan bahasa bajak laut yang tidak sopan. Responsnya dibuat secara otomatis oleh model bahasa dan mungkin tidak selalu akurat. Selain itu, **riwayat obrolan tidak disimpan**; jika Anda memuat ulang halaman, semua percakapan akan hilang. Untukmu yang menggunakan kunci API manual, tenang saja! Sebagian besar penggunaan API ini gratis, layaknya harta karun yang berlimpah! Biaya baru akan dikenakan jika kau menggunakannya di luar batas gratis, dan itu pun hanya jika kau sudah mendaftarkan akun pembayaranmu. Tetap pantau penggunaanmu di konsol Google AI Studio agar tak ada kejutan di tengah laut, ya! Aplikasi ini dibuat untuk tujuan edukasi, untuk menunjukkan cara membangun chatbot interaktif dengan Gemini API.</p>
@@ -210,23 +206,13 @@
     <div id="apiKeyModal" class="fixed inset-0 bg-gray-900 bg-opacity-75 flex items-center justify-center p-4 z-50">
         <div class="bg-gray-800 p-8 rounded-xl shadow-2xl text-center max-w-md w-full">
             <h2 class="text-2xl font-bold mb-4 text-white">Siap Berlayar, Nak?</h2>
-            <p class="mb-6 text-gray-300">Pilih bagaimana kau akan mendapatkan kunci API-mu, ya!</p>
-            <div id="apiKeyOptions" class="space-y-4">
-                <button id="useInternalKeyBtn" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-4 rounded-lg transition duration-300 shadow-md">
-                    Gunakan Kunci Internal
-                </button>
-                <button id="showManualInputBtn" class="w-full bg-gray-600 hover:bg-gray-700 text-white font-semibold py-3 px-4 rounded-lg transition duration-300 shadow-md">
-                    Masukkan Kunci Manual
-                </button>
-            </div>
-            <div id="manualApiKeyInput" class="mt-6 hidden">
+            <p class="mb-6 text-gray-300">Masukkan kunci API-mu untuk berlayar!</p>
+            <div id="manualApiKeyInput">
                 <p class="text-sm text-gray-400 mb-2">Kau bisa dapatkan kuncimu di <a href="https://aistudio.google.com/apikey" target="_blank" class="text-blue-400 hover:text-blue-300 underline">Google AI Studio</a>. Tempelkan di sini!</p>
                 <input type="password" id="apiKeyInput" placeholder="Tempelkan kunci API-mu di sini..." class="w-full p-3 bg-gray-700 text-white rounded-lg border-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500">
                 <div class="flex space-x-2 mt-4">
-                    <button id="backButton" class="w-1/2 bg-gray-600 hover:bg-gray-700 text-white font-semibold py-3 px-4 rounded-lg transition duration-300 shadow-md">
-                        Kembali
-                    </button>
-                    <button id="submitManualKeyBtn" class="w-1/2 bg-green-600 hover:bg-green-700 text-white font-semibold py-3 px-4 rounded-lg transition duration-300 shadow-md">
+                    <!-- Tombol Kembali dihapus karena ini adalah satu-satunya opsi -->
+                    <button id="submitManualKeyBtn" class="w-full bg-green-600 hover:bg-green-700 text-white font-semibold py-3 px-4 rounded-lg transition duration-300 shadow-md">
                         Mulai Berlayar!
                     </button>
                 </div>
@@ -272,6 +258,7 @@
     </div>
 
     <script type="module">
+        // Variabel global untuk menyimpan kunci API dan riwayat obrolan
         let apiKey = '';
         let chatHistory = [];
         
@@ -285,12 +272,8 @@
 
         // Elemen DOM
         const apiKeyModal = document.getElementById('apiKeyModal');
-        const useInternalKeyBtn = document.getElementById('useInternalKeyBtn');
-        const showManualInputBtn = document.getElementById('showManualInputBtn');
-        const manualApiKeyInput = document.getElementById('manualApiKeyInput');
         const apiKeyInput = document.getElementById('apiKeyInput');
         const submitManualKeyBtn = document.getElementById('submitManualKeyBtn');
-        const backButton = document.getElementById('backButton');
         const mainApp = document.getElementById('mainApp');
         const normalTabBtn = document.getElementById('normalTabBtn');
         const rawTabBtn = document.getElementById('rawTabBtn');
@@ -539,18 +522,6 @@
         });
 
         // Logika API Key Modal
-        useInternalKeyBtn.addEventListener('click', () => {
-            apiKey = typeof __api_key !== 'undefined' ? __api_key : '';
-            apiKeyModal.classList.add('hidden');
-            mainApp.classList.remove('hidden');
-            renderChatTabs();
-        });
-
-        showManualInputBtn.addEventListener('click', () => {
-            document.getElementById('apiKeyOptions').classList.add('hidden');
-            manualApiKeyInput.classList.remove('hidden');
-        });
-
         submitManualKeyBtn.addEventListener('click', () => {
             const manualKey = apiKeyInput.value.trim();
             if (manualKey) {
@@ -559,14 +530,9 @@
                 mainApp.classList.remove('hidden');
                 renderChatTabs();
             } else {
+                // Menggunakan modal kustom untuk pesan kesalahan, bukan alert()
                 alert('Tolong masukkan kunci API-mu, ya!');
             }
-        });
-
-        backButton.addEventListener('click', () => {
-            manualApiKeyInput.classList.add('hidden');
-            document.getElementById('apiKeyOptions').classList.remove('hidden');
-            apiKeyInput.value = '';
         });
 
         // Logika Info Modal
@@ -585,6 +551,7 @@
             }
         });
 
+        // Saat halaman dimuat, langsung tampilkan modal input API Key
         window.onload = function() {
             apiKeyModal.classList.remove('hidden');
         };
