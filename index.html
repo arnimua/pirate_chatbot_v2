@@ -1,0 +1,593 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Aplikasi Chatbot Bajak Laut</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #121212;
+            color: #e0e0e0;
+        }
+        .chat-container {
+            height: 70vh;
+            overflow-y: auto;
+        }
+        .user-message {
+            background-color: #3b82f6;
+            color: white;
+            border-radius: 1.5rem;
+            border-bottom-right-radius: 0;
+            padding: 0.75rem 1.25rem;
+            max-width: 80%;
+        }
+        .bot-message {
+            background-color: #374151;
+            color: white;
+            border-radius: 1.5rem;
+            border-bottom-left-radius: 0;
+            padding: 0.75rem 1.25rem;
+            max-width: 80%;
+        }
+        .api-raw-data {
+            background-color: #1f2937;
+            padding: 0.5rem;
+            margin-top: 0.5rem;
+            border-radius: 0.5rem;
+            font-size: 0.75rem;
+            color: #d1d5db;
+            overflow-x: auto;
+        }
+        .tab-button.active {
+            background-color: #374151;
+            color: white;
+        }
+        /* Style untuk indikator mengetik */
+        .typing-indicator {
+            background-color: #374151;
+            color: white;
+            border-radius: 1.5rem;
+            border-bottom-left-radius: 0;
+            padding: 0.75rem 1.25rem;
+            max-width: 150px;
+            display: flex;
+            align-items: center;
+            justify-content: space-around;
+        }
+        .typing-indicator span {
+            width: 8px;
+            height: 8px;
+            background-color: white;
+            border-radius: 50%;
+            animation: bounce 1s infinite;
+        }
+        .typing-indicator span:nth-child(2) {
+            animation-delay: 0.2s;
+        }
+        .typing-indicator span:nth-child(3) {
+            animation-delay: 0.4s;
+        }
+        @keyframes bounce {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-8px); }
+        }
+        /* Style untuk tombol disabled */
+        #sendButton:disabled {
+            background-color: #4b5563;
+            cursor: not-allowed;
+        }
+        /* Gaya Accordion */
+        .accordion-header {
+            width: 100%;
+            text-align: left;
+            font-weight: 600;
+            padding: 1rem;
+            background-color: #2d3748;
+            border-radius: 0.5rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+        .accordion-header:hover {
+            background-color: #4a5568;
+        }
+        .accordion-item {
+            margin-bottom: 0.5rem;
+        }
+        .accordion-content {
+            overflow: hidden;
+            transition: max-height 0.3s ease-out, padding 0.3s ease-out;
+            max-height: 0;
+            padding: 0 1rem;
+        }
+        .accordion-content.active {
+            max-height: 1000px; /* Nilai besar yang cukup untuk konten apa pun */
+            padding: 1rem;
+        }
+        .accordion-header svg {
+            transition: transform 0.3s ease-out;
+        }
+        .accordion-header.active svg {
+            transform: rotate(180deg);
+        }
+        /* Gaya Modal */
+        .modal {
+            position: fixed;
+            z-index: 100;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            overflow: auto;
+            background-color: rgba(0, 0, 0, 0.75);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .modal-content {
+            background-color: #1f2937;
+            margin: auto;
+            padding: 2rem;
+            border-radius: 1rem;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+            max-width: 90%;
+            width: 500px;
+        }
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid #374151;
+            padding-bottom: 1rem;
+            margin-bottom: 1rem;
+        }
+        .modal-close {
+            color: #aaa;
+            font-size: 2rem;
+            font-weight: bold;
+            cursor: pointer;
+        }
+        .modal-close:hover,
+        .modal-close:focus {
+            color: white;
+        }
+        .info-button-container {
+            position: fixed;
+            top: 1rem;
+            right: 1rem;
+            z-index: 99;
+        }
+    </style>
+</head>
+<body class="flex items-center justify-center min-h-screen">
+
+    <!-- Tombol Bantuan (Ditempatkan di luar mainApp) -->
+    <div class="info-button-container">
+        <button id="infoButton" class="text-gray-400 hover:text-white transition duration-200">
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-help-circle">
+                <circle cx="12" cy="12" r="10"></circle>
+                <path d="M9.09 9.09a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path>
+                <line x1="12" y1="17" x2="12.01" y2="17"></line>
+            </svg>
+        </button>
+    </div>
+
+    <!-- Modal Informasi Aplikasi (Awalnya tersembunyi) -->
+    <div id="infoModal" class="modal hidden">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 class="text-2xl font-bold text-white">Tentang Aplikasi Ini</h3>
+                <span class="modal-close">&times;</span>
+            </div>
+            <div class="modal-body text-gray-300 space-y-4">
+                <p><strong>Ahoy, pelaut!</strong> Selamat datang di kapal Chatbot Bajak Laut. Aplikasi ini adalah sebuah bot percakapan yang dirancang khusus untuk membantumu dengan gaya bahasa yang unik dan jargon bajak laut yang kasar. Kami mengundangmu untuk berinteraksi, bertanya, atau sekadar bercanda dengan kapten kapal ini!</p>
+
+                <p><strong>Bagaimana Kapal Ini Berlayar (Cara Kerja API):</strong></p>
+                <p>Aplikasi ini ditenagai oleh <strong>Google Gemini API</strong>, khususnya model `gemini-2.5-flash-preview-05-20`. Setiap kali Anda mengirim pesan, pesan tersebut digabungkan dengan seluruh riwayat obrolan (chat history) dan dikirim sebagai satu permintaan (payload) ke Gemini API. Model akan memproses permintaan tersebut dan mengembalikan respons yang disesuaikan dengan karakter bajak laut. Interaksi ini memungkinkan bot untuk mempertahankan konteks percakapan dengan Anda.</p>
+
+                <p><strong>Menyelami Jeroan Kapal (Tab "Raw Data"):</strong></p>
+                <p>Tab "Raw Data" adalah tempat rahasia di mana Anda bisa melihat "jeroan" setiap percakapan. Di sini, setiap respons dari bot dilengkapi dengan data JSON mentah yang dikirim sebagai <strong>Payload (permintaan)</strong> dan <strong>Respons (jawaban)</strong> dari API. Ini sangat berguna jika Anda ingin memahami bagaimana data dikirim dan diterima oleh API, serta untuk tujuan debugging jika ada masalah di tengah lautan.</p>
+
+                <p><strong>Kunci API: Pilihanmu, Nak!</strong></p>
+                <p>Anda bisa memilih dua cara untuk memulai petualangan ini:</p>
+                <ul>
+                    <li><strong>Gunakan Kunci Internal:</strong> Ini adalah kunci API milik Anda sendiri yang disediakan oleh lingkungan canvas. Anda tidak perlu memasukkannya secara manual.</li>
+                    <li><strong>Masukkan Kunci Manual:</strong> Anda bisa mendapatkan kunci API dari <a href="https://aistudio.google.com/apikey" target="_blank" class="text-blue-400 hover:text-blue-300 underline">Google AI Studio</a>. Pilihan ini memberi Anda kontrol penuh.</li>
+                </ul>
+
+                <p><strong>Peringatan dari Kapten:</strong></p>
+                <p>Harap diingat bahwa bot ini adalah karakter yang kasar dan mungkin menggunakan bahasa bajak laut yang tidak sopan. Responsnya dibuat secara otomatis oleh model bahasa dan mungkin tidak selalu akurat. Selain itu, **riwayat obrolan tidak disimpan**; jika Anda memuat ulang halaman, semua percakapan akan hilang. Untukmu yang menggunakan kunci API manual, tenang saja! Sebagian besar penggunaan API ini gratis, layaknya harta karun yang berlimpah! Biaya baru akan dikenakan jika kau menggunakannya di luar batas gratis, dan itu pun hanya jika kau sudah mendaftarkan akun pembayaranmu. Tetap pantau penggunaanmu di konsol Google AI Studio agar tak ada kejutan di tengah laut, ya! Aplikasi ini dibuat untuk tujuan edukasi, untuk menunjukkan cara membangun chatbot interaktif dengan Gemini API.</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal untuk API Key -->
+    <div id="apiKeyModal" class="fixed inset-0 bg-gray-900 bg-opacity-75 flex items-center justify-center p-4 z-50">
+        <div class="bg-gray-800 p-8 rounded-xl shadow-2xl text-center max-w-md w-full">
+            <h2 class="text-2xl font-bold mb-4 text-white">Siap Berlayar, Nak?</h2>
+            <p class="mb-6 text-gray-300">Pilih bagaimana kau akan mendapatkan kunci API-mu, ya!</p>
+            <div id="apiKeyOptions" class="space-y-4">
+                <button id="useInternalKeyBtn" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-4 rounded-lg transition duration-300 shadow-md">
+                    Gunakan Kunci Internal
+                </button>
+                <button id="showManualInputBtn" class="w-full bg-gray-600 hover:bg-gray-700 text-white font-semibold py-3 px-4 rounded-lg transition duration-300 shadow-md">
+                    Masukkan Kunci Manual
+                </button>
+            </div>
+            <div id="manualApiKeyInput" class="mt-6 hidden">
+                <p class="text-sm text-gray-400 mb-2">Kau bisa dapatkan kuncimu di <a href="https://aistudio.google.com/apikey" target="_blank" class="text-blue-400 hover:text-blue-300 underline">Google AI Studio</a>. Tempelkan di sini!</p>
+                <input type="password" id="apiKeyInput" placeholder="Tempelkan kunci API-mu di sini..." class="w-full p-3 bg-gray-700 text-white rounded-lg border-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                <div class="flex space-x-2 mt-4">
+                    <button id="backButton" class="w-1/2 bg-gray-600 hover:bg-gray-700 text-white font-semibold py-3 px-4 rounded-lg transition duration-300 shadow-md">
+                        Kembali
+                    </button>
+                    <button id="submitManualKeyBtn" class="w-1/2 bg-green-600 hover:bg-green-700 text-white font-semibold py-3 px-4 rounded-lg transition duration-300 shadow-md">
+                        Mulai Berlayar!
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+
+    <!-- Main Chat Interface -->
+    <div id="mainApp" class="container mx-auto p-4 max-w-2xl bg-gray-800 rounded-2xl shadow-2xl hidden flex flex-col h-screen relative">
+        <h1 class="text-3xl font-bold text-center mb-6 text-white">Chatbot Bajak Laut</h1>
+        
+        <!-- Tab Buttons -->
+        <div class="flex space-x-2 mb-4">
+            <button id="normalTabBtn" class="tab-button w-1/2 bg-gray-600 hover:bg-gray-700 text-white font-semibold py-2 px-4 rounded-lg transition duration-300 shadow-md active">
+                Normal
+            </button>
+            <button id="rawTabBtn" class="tab-button w-1/2 bg-gray-600 hover:bg-gray-700 text-white font-semibold py-2 px-4 rounded-lg transition duration-300 shadow-md">
+                Raw Data
+            </button>
+        </div>
+
+        <!-- Tab Content Containers -->
+        <div id="normalTabContent" class="chat-container flex-grow p-4 space-y-4 rounded-xl mb-4 bg-gray-700 border border-gray-600">
+            <!-- Pesan akan ditambahkan di sini oleh JavaScript -->
+        </div>
+        <div id="rawTabContent" class="chat-container flex-grow p-4 space-y-4 rounded-xl mb-4 bg-gray-700 border border-gray-600 hidden">
+            <!-- Data mentah akan ditambahkan di sini oleh JavaScript -->
+        </div>
+
+        <!-- Input Pengguna dan Tombol Kirim -->
+        <div class="flex items-center space-x-4 mt-auto">
+            <input type="text" id="messageInput" placeholder="Tulis pesanmu, Nak..." class="flex-grow p-3 rounded-full bg-gray-700 text-white border border-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all duration-200">
+            <button id="sendButton" class="bg-blue-600 hover:bg-blue-700 text-white rounded-full p-3 transition duration-300 shadow-md" disabled>
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M22 2L11 13M22 2L15 22L11 13M22 2L2 9L11 13" />
+                </svg>
+            </button>
+        </div>
+        <div id="loadingIndicator" class="text-center text-gray-400 mt-4 hidden">
+            Sedang berlayar...
+        </div>
+    </div>
+
+    <script type="module">
+        let apiKey = '';
+        let chatHistory = [];
+        
+        let fullHistory = [{
+            prompt: "Ahoy, Nak! Selamat datang di kapalku. Ada yang bisa dibantu, ya?",
+            response: "Ahoy, Nak! Selamat datang di kapalku. Ada yang bisa dibantu, ya?",
+            payload: null,
+            apiResponse: null,
+            sender: "bot"
+        }];
+
+        // Elemen DOM
+        const apiKeyModal = document.getElementById('apiKeyModal');
+        const useInternalKeyBtn = document.getElementById('useInternalKeyBtn');
+        const showManualInputBtn = document.getElementById('showManualInputBtn');
+        const manualApiKeyInput = document.getElementById('manualApiKeyInput');
+        const apiKeyInput = document.getElementById('apiKeyInput');
+        const submitManualKeyBtn = document.getElementById('submitManualKeyBtn');
+        const backButton = document.getElementById('backButton');
+        const mainApp = document.getElementById('mainApp');
+        const normalTabBtn = document.getElementById('normalTabBtn');
+        const rawTabBtn = document.getElementById('rawTabBtn');
+        const normalTabContent = document.getElementById('normalTabContent');
+        const rawTabContent = document.getElementById('rawTabContent');
+        const messageInput = document.getElementById('messageInput');
+        const sendButton = document.getElementById('sendButton');
+        const loadingIndicator = document.getElementById('loadingIndicator');
+        const infoButton = document.getElementById('infoButton');
+        const infoModal = document.getElementById('infoModal');
+        const modalClose = document.querySelector('.modal-close');
+
+        // URL API Google Gemini (Model Flash)
+        const apiUrl = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key=";
+
+        // Fungsi untuk merender kedua tab
+        const renderChatTabs = () => {
+            // Kosongkan kontainer
+            normalTabContent.innerHTML = '';
+            rawTabContent.innerHTML = '';
+
+            // Render tab normal
+            fullHistory.forEach(item => {
+                if (item.sender === 'user') {
+                    const messageDiv = document.createElement('div');
+                    messageDiv.classList.add('flex', 'justify-end');
+                    const innerDiv = document.createElement('div');
+                    innerDiv.classList.add('user-message');
+                    innerDiv.textContent = item.prompt;
+                    messageDiv.appendChild(innerDiv);
+                    normalTabContent.appendChild(messageDiv);
+                } else if (item.sender === 'bot') {
+                    const messageDiv = document.createElement('div');
+                    messageDiv.classList.add('flex', 'justify-start');
+                    const innerDiv = document.createElement('div');
+                    innerDiv.classList.add('bot-message');
+                    innerDiv.textContent = item.response;
+                    messageDiv.appendChild(innerDiv);
+                    normalTabContent.appendChild(messageDiv);
+                }
+            });
+
+            // Render tab raw dengan Accordion
+            fullHistory.forEach((item, index) => {
+                const chatNumber = index + 1;
+                const senderLabel = item.sender === 'user' ? 'Kamu' : 'Bot';
+
+                const accordionItem = document.createElement('div');
+                accordionItem.classList.add('accordion-item');
+
+                const accordionHeader = document.createElement('button');
+                accordionHeader.classList.add('accordion-header');
+                accordionHeader.innerHTML = `
+                    <span>Chat ${chatNumber} (${senderLabel}):</span>
+                    <svg class="w-5 h-5 text-gray-400" viewBox="0 0 20 20" fill="currentColor">
+                        <path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd" />
+                    </svg>
+                `;
+                
+                const accordionContent = document.createElement('div');
+                accordionContent.classList.add('accordion-content');
+                
+                // Tambahkan teks pesan ke dalam accordion content
+                const messagePre = document.createElement('pre');
+                messagePre.classList.add('api-raw-data');
+                messagePre.textContent = `--- Teks Pesan ---\n` + (item.sender === 'user' ? item.prompt : item.response);
+                accordionContent.appendChild(messagePre);
+
+                // Tambahkan data mentah untuk bot
+                if (item.sender === 'bot') {
+                    const payloadPre = document.createElement('pre');
+                    payloadPre.classList.add('api-raw-data');
+                    if (item.payload) {
+                        payloadPre.textContent = "--- Payload (Permintaan) ---\n" + JSON.stringify(item.payload, null, 2);
+                    } else {
+                        payloadPre.textContent = "--- Payload (Permintaan) ---\nData tidak tersedia.";
+                    }
+                    accordionContent.appendChild(payloadPre);
+                    
+                    const responsePre = document.createElement('pre');
+                    responsePre.classList.add('api-raw-data');
+                    if (item.apiResponse) {
+                        responsePre.textContent = "--- Respons (Jawaban) ---\n" + JSON.stringify(item.apiResponse, null, 2);
+                    } else {
+                        responsePre.textContent = "--- Respons (Jawaban) ---\nData tidak tersedia.";
+                    }
+                    accordionContent.appendChild(responsePre);
+                } else if (item.sender === 'user') {
+                    // Tambahkan pesan untuk pengguna
+                    const noDataPre = document.createElement('pre');
+                    noDataPre.classList.add('api-raw-data');
+                    noDataPre.textContent = "--- Payload / Respons ---\nData mentah hanya relevan untuk respons bot.";
+                    accordionContent.appendChild(noDataPre);
+                }
+                
+                accordionItem.appendChild(accordionHeader);
+                accordionItem.appendChild(accordionContent);
+                rawTabContent.appendChild(accordionItem);
+
+                // Tambahkan event listener untuk accordion
+                accordionHeader.addEventListener('click', () => {
+                    accordionContent.classList.toggle('active');
+                    accordionHeader.classList.toggle('active');
+                });
+            });
+
+            if (!normalTabContent.classList.contains('hidden')) {
+                normalTabContent.scrollTop = normalTabContent.scrollHeight;
+            }
+            if (!rawTabContent.classList.contains('hidden')) {
+                rawTabContent.scrollTop = rawTabContent.scrollHeight;
+            }
+        };
+
+        // Fungsi untuk menampilkan indikator mengetik
+        const showTypingIndicator = () => {
+            const typingDiv = document.createElement('div');
+            typingDiv.classList.add('flex', 'justify-start', 'typing-row');
+            const typingBubble = document.createElement('div');
+            typingBubble.classList.add('typing-indicator');
+            typingBubble.innerHTML = '<span></span><span></span><span></span>';
+            typingDiv.appendChild(typingBubble);
+            normalTabContent.appendChild(typingDiv);
+            normalTabContent.scrollTop = normalTabContent.scrollHeight;
+        };
+
+        // Fungsi untuk menyembunyikan indikator mengetik
+        const hideTypingIndicator = () => {
+            const typingRow = document.querySelector('.typing-row');
+            if (typingRow) {
+                typingRow.remove();
+            }
+        };
+
+        // Fungsi untuk mengirim pesan ke Gemini API
+        const sendMessageToGemini = async (prompt) => {
+            sendButton.disabled = true;
+            
+            fullHistory.push({
+                prompt: prompt,
+                response: prompt,
+                payload: null,
+                apiResponse: null,
+                sender: "user"
+            });
+            renderChatTabs();
+
+            const fullPrompt = `Kamu adalah chatbot bajak laut. Jawablah semua pesan dengan gaya bahasa bajak laut. Gunakan slang bajak laut dan nada bicara yang kasar. Contoh: "Ahoy, Nak! Ada apa?". Ini adalah riwayat percakapan: ${chatHistory.map(h => `${h.role}: ${h.parts[0].text}`).join('\n')}\n\nPesan baru: ${prompt}`;
+            
+            chatHistory.push({
+                role: "user",
+                parts: [{
+                    text: fullPrompt
+                }]
+            });
+            
+            const payload = { contents: chatHistory };
+
+            showTypingIndicator();
+
+            try {
+                const response = await fetch(apiUrl + apiKey, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(payload)
+                });
+                const result = await response.json();
+                
+                let botResponse = "Maaf, Nak! Ada masalah di lautan. Coba lagi nanti, ya!";
+                if (result.candidates && result.candidates.length > 0 &&
+                    result.candidates[0].content && result.candidates[0].content.parts &&
+                    result.candidates[0].content.parts.length > 0) {
+                    botResponse = result.candidates[0].content.parts[0].text;
+                }
+                
+                fullHistory.push({
+                    prompt: fullPrompt,
+                    response: botResponse,
+                    payload: payload,
+                    apiResponse: result,
+                    sender: "bot"
+                });
+                
+                chatHistory.push({
+                    role: "model",
+                    parts: [{
+                        text: botResponse
+                    }]
+                });
+
+            } catch (error) {
+                console.error('Ada masalah saat berlayar:', error);
+                fullHistory.push({
+                    prompt: fullPrompt,
+                    response: "Aduh, ada badai! Pesanku tidak sampai ke daratan. Coba lagi, ah!",
+                    payload: payload,
+                    apiResponse: { error: error.message },
+                    sender: "bot"
+                });
+            } finally {
+                hideTypingIndicator();
+                renderChatTabs();
+                sendButton.disabled = messageInput.value.trim() === '';
+            }
+        };
+
+        // Event listener untuk tombol kirim
+        sendButton.addEventListener('click', () => {
+            const message = messageInput.value.trim();
+            if (message) {
+                sendMessageToGemini(message);
+                messageInput.value = '';
+                sendButton.disabled = true;
+            }
+        });
+
+        // Event listener untuk tombol enter di input
+        messageInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                if (messageInput.value.trim() !== '') {
+                    sendButton.click();
+                }
+            }
+        });
+
+        // Event listener untuk memvalidasi input
+        messageInput.addEventListener('input', () => {
+            sendButton.disabled = messageInput.value.trim() === '';
+        });
+        
+        // Logika untuk beralih tab
+        normalTabBtn.addEventListener('click', () => {
+            normalTabContent.classList.remove('hidden');
+            rawTabContent.classList.add('hidden');
+            normalTabBtn.classList.add('active');
+            rawTabBtn.classList.remove('active');
+        });
+
+        rawTabBtn.addEventListener('click', () => {
+            rawTabContent.classList.remove('hidden');
+            normalTabContent.classList.add('hidden');
+            rawTabBtn.classList.add('active');
+            normalTabBtn.classList.remove('active');
+        });
+
+        // Logika API Key Modal
+        useInternalKeyBtn.addEventListener('click', () => {
+            apiKey = typeof __api_key !== 'undefined' ? __api_key : '';
+            apiKeyModal.classList.add('hidden');
+            mainApp.classList.remove('hidden');
+            renderChatTabs();
+        });
+
+        showManualInputBtn.addEventListener('click', () => {
+            document.getElementById('apiKeyOptions').classList.add('hidden');
+            manualApiKeyInput.classList.remove('hidden');
+        });
+
+        submitManualKeyBtn.addEventListener('click', () => {
+            const manualKey = apiKeyInput.value.trim();
+            if (manualKey) {
+                apiKey = manualKey;
+                apiKeyModal.classList.add('hidden');
+                mainApp.classList.remove('hidden');
+                renderChatTabs();
+            } else {
+                alert('Tolong masukkan kunci API-mu, ya!');
+            }
+        });
+
+        backButton.addEventListener('click', () => {
+            manualApiKeyInput.classList.add('hidden');
+            document.getElementById('apiKeyOptions').classList.remove('hidden');
+            apiKeyInput.value = '';
+        });
+
+        // Logika Info Modal
+        infoButton.addEventListener('click', () => {
+            infoModal.classList.remove('hidden');
+        });
+
+        modalClose.addEventListener('click', () => {
+            infoModal.classList.add('hidden');
+        });
+
+        // Menutup modal jika klik di luar
+        window.addEventListener('click', (event) => {
+            if (event.target === infoModal) {
+                infoModal.classList.add('hidden');
+            }
+        });
+
+        window.onload = function() {
+            apiKeyModal.classList.remove('hidden');
+        };
+    </script>
+</body>
+</html>
